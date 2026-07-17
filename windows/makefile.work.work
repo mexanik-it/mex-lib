@@ -1,0 +1,71 @@
+SRCDIR  := source
+INCDIR  := include
+LIBDIR  := lib
+BINDIR  := bin
+
+LIB_NAME := mex-lib
+
+CXX     := g++
+# -MMD -MP нужны, чтобы автоматически генерировать зависимости (.d файлы)
+# Это позволяет делать умную пересборку: меняем .h — перекомпилируются только нужные .cpp
+CXXFLAGS:= -Wall -Wextra -std=c++17 -I$(INCDIR) -MMD -MP
+
+# Находим ВСЕ .cpp файлы в source
+SRCS    := $(wildcard $(SRCDIR)/*.cpp)
+
+# Для каждого source/file.cpp делаем bin/file.o
+OBJS    := $(SRCS:$(SRCDIR)/%.cpp=$(BINDIR)/%.o)
+
+# Файлы зависимостей (автоматически создаются компилятором)
+DEPS    := $(OBJS:.o=.d)
+
+# Пути для Windows (backslashes) для команд mkdir/move/del
+LIBDIR_WIN  := $(subst /,\,$(LIBDIR))
+BINDIR_WIN  := $(subst /,\,$(BINDIR))
+
+LIB_FILE_A_UNIX := $(LIBDIR)/lib$(LIB_NAME).a
+LIB_FILE_WIN   := $(LIBDIR_WIN)\$(LIB_NAME).lib
+
+.PHONY: all clean rebuild
+
+all: $(LIB_FILE_WIN)
+	@cls
+	@echo.
+	@echo [[92mSUCCESS[0m] Library created: $(LIB_FILE_WIN) ($(words $(SRCS)) files compiled)
+	@echo.
+	@pause
+
+# Правило создания библиотеки: берём все .o файлы и кладём в архив
+$(LIB_FILE_WIN): $(OBJS) | $(LIBDIR)
+	@if not exist "$(LIBDIR_WIN)" mkdir "$(LIBDIR_WIN)"
+	@ar rcs "$(LIB_FILE_A_UNIX)" $(OBJS)
+	@move /Y "$(LIBDIR_WIN)\lib$(LIB_NAME).a" "$(LIB_FILE_WIN)" >nul
+
+# Шаблонное правило: компилируем каждый .cpp в свой .o
+# Благодаря -MMD -MP здесь же создаются .d файлы с зависимостями от .h
+$(BINDIR)/%.o: $(SRCDIR)/%.cpp | $(BINDIR)
+	@if not exist "$(BINDIR_WIN)" mkdir "$(BINDIR_WIN)"
+	@echo Compiling: $<
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Создаём директорию bin, если её нет (order-only prerequisite)
+$(BINDIR):
+	mkdir $(BINDIR)
+
+$(LIBDIR):
+	mkdir $(LIBDIR)
+
+clean:
+	del /Q $(BINDIR_WIN)\*.o 2>nul
+	del /Q $(BINDIR_WIN)\*.d 2>nul
+	del /Q $(LIBDIR_WIN)\*.a 2>nul
+	del /Q $(LIBDIR_WIN)\*.lib 2>nul
+	@echo [[93m:: Clean done.[0m]
+
+rebuild: clean all
+	@cls
+	@echo [[94mBUILD STARTED (REBUILD)[0m]
+	@$(MAKE) all
+
+# Подключаем автоматически созданные файлы зависимостей
+-include $(DEPS)

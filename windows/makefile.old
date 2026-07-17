@@ -1,0 +1,61 @@
+
+# Пути
+SRCDIR  := source
+INCDIR  := include
+LIBDIR  := lib
+BINDIR  := bin
+
+# Имя библиотеки (без префикса lib и расширения)
+LIB_NAME   := mex-lib
+
+# Компилятор и флаги
+CXX     := g++
+CXXFLAGS:= -Wall -Wextra -std=c++17 -I$(INCDIR)
+
+# Исходники библиотеки: ищем source/mex-lib.cpp
+LIB_SRCS   := $(wildcard $(SRCDIR)/$(LIB_NAME).cpp)
+
+# ВАЖНО: объектные файлы теперь формируются в bin/
+LIB_OBJS   := $(LIB_SRCS:$(SRCDIR)/%.cpp=$(BINDIR)/%.o)
+
+# Целевой файл библиотеки
+LIB_FILE_A := $(LIBDIR)/lib$(LIB_NAME).a
+LIB_FILE   := $(LIBDIR)/$(LIB_NAME).lib
+
+.PHONY: all clean dirs
+
+# Главная цель: очистить экран, создать папки и собрать библиотеку .lib
+all: 
+	@cls
+	@echo [BUILD STARTED]
+#	@dir
+	@$(MAKE) $(LIB_FILE)
+	@echo.
+	@echo [OK] Library $(LIB_FILE) created successfully.
+	@pause
+
+# Создание всех папок, если нет
+dirs:
+	@if not exist "$(LIBDIR)" mkdir "$(LIBDIR)"
+	@if not exist "$(BINDIR)" mkdir "$(BINDIR)"
+	@if not exist "$(SRCDIR)" mkdir "$(SRCDIR)"
+	@if not exist "$(INCDIR)" mkdir "$(INCDIR)"
+
+# Сборка архива .a из объектных файлов в bin/
+$(LIB_FILE_A): $(LIB_OBJS) | dirs
+	ar rcs $@ $^
+
+# Переименование .a в .lib — жёсткие пути с обратными слэшами
+$(LIB_FILE): $(LIB_FILE_A)
+	@move /Y "lib\libmex-lib.a" "lib\mex-lib.lib"
+
+# Правило компиляции: source/*.cpp -> bin/*.o
+$(BINDIR)/%.o: $(SRCDIR)/%.cpp | dirs
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Очистка
+clean:
+	del /Q $(BINDIR)\*.o 2>nul
+	del /Q $(LIBDIR)\*.a 2>nul
+	del /Q $(LIBDIR)\*.lib 2>nul
+	@echo Clean done.

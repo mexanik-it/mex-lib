@@ -1,0 +1,61 @@
+SRCDIR  := source
+INCDIR  := include
+LIBDIR  := lib
+BINDIR  := bin
+
+LIB_NAME   := *
+
+CXX     := g++
+CXXFLAGS:= -Wall -Wextra -std=c++17 -I$(INCDIR)
+
+LIB_SRCS   := $(wildcard $(SRCDIR)/$(LIB_NAME).cpp)
+LIB_OBJS   := $(LIB_SRCS:$(SRCDIR)/%.cpp=$(BINDIR)/%.o)
+
+# Unix-style paths for g++ and ar
+LIB_FILE_A_UNIX := $(LIBDIR)/lib$(LIB_NAME).a
+LIB_FILE_UNIX   := $(LIBDIR)/$(LIB_NAME).lib
+
+# Windows-style paths (backslashes) for cmd commands
+LIBDIR_WIN  := $(subst /,\,$(LIBDIR))
+BINDIR_WIN  := $(subst /,\,$(BINDIR))
+LIB_FILE_A_WIN := $(LIBDIR_WIN)\lib$(LIB_NAME).a
+LIB_FILE_WIN   := $(LIBDIR_WIN)\$(LIB_NAME).lib
+OBJ_FILE_WIN   := $(BINDIR_WIN)\$(LIB_NAME).o
+
+# ANSI color codes (for terminals that support them)
+COLOR_RED    := [91m
+COLOR_GREEN  := [92m
+COLOR_YELLOW := [93m
+COLOR_RESET  := [0m
+
+.PHONY: all clean rebuild
+
+all:
+	@cls
+	@echo $(COLOR_GREEN)[BUILD STARTED]$(COLOR_RESET)
+	
+	@if not exist "$(LIBDIR_WIN)" mkdir "$(LIBDIR_WIN)"
+	@if not exist "$(BINDIR_WIN)" mkdir "$(BINDIR_WIN)"
+	@if not exist "$(SRCDIR)" mkdir "$(SRCDIR)"
+	@if not exist "$(INCDIR)" mkdir "$(INCDIR)"
+	@if not exist "$(LIB_SRCS)" ( \
+		echo [$(COLOR_RED)ERROR$(COLOR_RESET)] Source file not found: "$(LIB_SRCS)"$(COLOR_RESET) & exit 1 \
+	)
+	@echo Compiling: $(LIB_SRCS)
+	@if not exist "$(OBJ_FILE_WIN)" ( \
+		$(CXX) $(CXXFLAGS) -c "$(LIB_SRCS)" -o "$(OBJ_FILE_WIN)" \
+	)
+	@ar rcs "$(LIB_FILE_A_UNIX)" "$(OBJ_FILE_WIN)"
+	@move /Y "$(LIB_FILE_A_WIN)" "$(LIB_FILE_WIN)" >nul
+	@echo.
+	@echo [$(COLOR_GREEN)OK$(COLOR_RESET)] Library $(LIB_FILE_WIN) created successfully.
+	@echo.
+	@pause
+
+clean:
+	del /Q $(BINDIR_WIN)\*.o 2>nul
+	del /Q $(LIBDIR_WIN)\*.a 2>nul
+	del /Q $(LIBDIR_WIN)\*.lib 2>nul
+	@echo $(COLOR_YELLOW):: Clean done.$(COLOR_RESET)
+
+rebuild: clean all
